@@ -243,7 +243,6 @@ async function extractTextFromPdf(file: File): Promise<string> {
     data: new Uint8Array(await file.arrayBuffer()),
     isImageDecoderSupported: false,
     isOffscreenCanvasSupported: false,
-    useWasm: false,
   });
 
   try {
