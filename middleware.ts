@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthedRequest } from "./lib/server/auth";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic =
@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
 
   if (isPublic) return NextResponse.next();
 
-  if (!isAuthedRequest(request)) {
+  if (!(await isAuthedRequest(request))) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

@@ -34,5 +34,5 @@ export async function POST(request: Request) {
     return json({ error: "Incorrect password." }, 401);
   }
 
-  return json({ ok: true }, 200, { "set-cookie": sessionCookieHeader() });
+  return json({ ok: true }, 200, { "set-cookie": await sessionCookieHeader() });
 }
