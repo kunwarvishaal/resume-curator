@@ -32,17 +32,40 @@ Open [http://localhost:3000](http://localhost:3000).
 | --- | --- | --- |
 | `OPENAI_API_KEY` | Recommended | Server-side OpenAI key for AI curation and fix suggestions |
 | `OPENAI_MODEL` | Optional | Model ID (defaults to `gpt-4.1`) |
-| `APP_PASSWORD` | Recommended once deployed | Gates the whole app behind a shared password so a public URL isn't open to anyone |
+| `APP_PASSWORD` | Required in production | Gates the whole app behind a shared password |
+| `SESSION_SECRET` | Optional | Extra signing key for session cookies; change it to sign everyone out |
+| `ALLOW_OPEN_ACCESS` | Optional | Set to `true` only to run a production deployment with no login |
 
 Without `OPENAI_API_KEY`, the app still works using deterministic on-device analysis.
-Without `APP_PASSWORD`, the app has no login gate at all — fine for local dev, not recommended
-once deployed to a public URL (there is per-IP rate limiting on the API routes, but no auth).
+Without `APP_PASSWORD`, `npm run dev` is open (fine locally), but a production build **fails closed**:
+every page and API returns 503 until you set `APP_PASSWORD` (or `ALLOW_OPEN_ACCESS=true` on purpose).
+Sessions last 7 days and are signed with an expiry, so a stolen cookie stops working on its own.
+
+## Development checks
+
+```bash
+npm test            # unit tests (auth, SSRF guard, retries, redirects, request limits)
+npm run typecheck
+npm run lint
+npm run audit:prod  # known vulnerabilities in production dependencies
+```
+
+GitHub Actions runs all of these plus `npm run build` on every push and pull request,
+and Dependabot opens weekly update PRs. Install with `npm ci` so the versions in
+`package-lock.json` are used exactly.
+
+## Logs
+
+API routes write one JSON line per event (`curate.ai_ok`, `curate.ai_failed`, `jd_import.failed`,
+`login.failed`, `*.rate_limited` ...). In Vercel, open the project's **Logs** tab and filter by
+`curate.ai_failed` to see when the OpenAI review falls back to local analysis, and why.
+Logs never include resume text, job descriptions, passwords or IP addresses.
 
 ## Deploy to Vercel
 
 1. Push this repo to GitHub.
 2. Import the project in [Vercel](https://vercel.com/new).
-3. Add `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`) under **Settings → Environment Variables**.
+3. Add `APP_PASSWORD` and `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`) under **Settings → Environment Variables**.
 4. Deploy — Vercel auto-detects Next.js.
 
 Or use the CLI:
@@ -50,6 +73,7 @@ Or use the CLI:
 ```bash
 npm i -g vercel
 vercel
+vercel env add APP_PASSWORD
 vercel env add OPENAI_API_KEY
 vercel --prod
 ```
