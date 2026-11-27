@@ -20,7 +20,7 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
 }
 
 // POST { title } -> { query, match } with a U.S. career snapshot, or match: null.
-// Sits behind the password gate in middleware.ts like every other API route.
+// Sits behind the password gate in proxy.ts like every other API route.
 export async function POST(request: Request) {
   const rateLimit = takeRateLimit(request, "career", RATE_LIMIT, RATE_WINDOW_MS);
   if (!rateLimit.allowed) {

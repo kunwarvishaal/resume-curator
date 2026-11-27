@@ -112,7 +112,7 @@ lib/
   server/api-security.ts
   server/auth.ts          # Password gate helpers
   server/career-data.ts   # TryHired lookup: title cleaning, match check, 24 h cache
-middleware.ts            # Redirects unauthenticated requests to /login
+proxy.ts                 # Password gate: redirects unauthenticated requests to /login
 public/
   hero-wave.svg         # Decorative landing SVG
   fonts/                # PDF export fonts

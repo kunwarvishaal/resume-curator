@@ -6,6 +6,57 @@ covers, see `docs/CHECKLIST.md`) and **how** it works.
 
 ---
 
+## Lesson 6 — Moving to Next.js 16 (28 Nov 2026)
+
+**Checklist:** CI/CD, Dependency vulnerabilities, Authentication
+
+A **major version** (15 → 16) is allowed to break things that worked before; minor and patch
+versions are not. Dependabot opened the upgrade as PR #6 and CI failed, which is CI doing its
+job: it caught the break before it reached the live site. Three things needed changing.
+
+### 1. `npm run lint`: from `next lint` to the ESLint CLI
+Next 16 deleted the `next lint` command. It read `next lint` as "lint a folder called `lint`"
+and stopped. Now `package.json` says `"lint": "eslint ."` and ESLint (the tool that flags
+risky code) runs directly.
+
+ESLint 9 also wants its settings in a new format, the **flat config**: one JavaScript file,
+`eslint.config.mjs`, that lists rule sets in order, instead of the old `.eslintrc.json`:
+
+```js
+export default defineConfig([
+  ...nextCoreWebVitals,   // React and Next.js rules, e.g. "hooks only at the top level"
+  ...nextTypescript,      // TypeScript rules, e.g. "no `any`"
+  globalIgnores([".next/**", "next-env.d.ts"]),  // generated files, not ours
+]);
+```
+
+Same two rule sets as before, so the results match (0 errors, the same one `<img>` warning).
+**How we know the rules really load:** a file with three planted mistakes (a hook inside an
+`if`, an `any`, an unused variable) produced all three complaints. A lint config that loads
+nothing would pass everything, which is worse than failing.
+
+### 2. `middleware.ts` → `proxy.ts`, `middleware()` → `proxy()`
+The file that runs before every request (our password gate) is now called a **proxy**, because
+it stands in front of the app. Only the name changed; the logic is identical:
+1. let assets and `/api/health` through;
+2. if no password is configured, answer 503 "locked";
+3. let `/login` and `/api/login` through;
+4. anyone without a valid session cookie gets 401 (API) or a redirect to `/login` (pages).
+
+**Tested by running it:** the built app was started locally and probed. With a password set:
+`/` → 307 to `/login?next=%2F`, `/api/curate` → 401, `/login` and `/api/health` → 200. With
+none: every route → 503 (health too, on purpose, so an uptime monitor raises the alarm).
+
+### 3. The postcss pin is gone
+`postcss` (the CSS processor) was forced to 8.5.32 because Next 15 shipped an old, vulnerable
+copy. Next 16 ships 8.5.23, and `npm audit` finds 0 vulnerabilities without the pin, so the
+`overrides` entry was removed. One less special case to remember.
+
+Next 16 also rewrote `tsconfig.json` on its first build (`"jsx": "react-jsx"`, plus the new
+`.next/dev/types` folder). Those are its required settings, so they are committed.
+
+---
+
 ## Lesson 5 — Checking both kinds of packages for security bugs (28 Nov 2026)
 
 **Checklist:** Dependency vulnerabilities (web app and CV tool), CI/CD (CV tool)
