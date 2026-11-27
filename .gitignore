@@ -38,3 +38,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# CV formatter: candidate files hold personal data, keep them out of git (example stays)
+/tools/cv-format/candidates/*
+!/tools/cv-format/candidates/example.json
+/tools/cv-format/.venv/
+__pycache__/

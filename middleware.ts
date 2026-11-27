@@ -9,7 +9,7 @@ export async function middleware(request: NextRequest) {
 
   const isAsset =
     pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.startsWith("/fonts");
-  if (isAsset) return NextResponse.next();
+  if (isAsset || pathname === "/api/health") return NextResponse.next();
 
   if (accessMode() === "locked") {
     if (pathname.startsWith("/api/")) {
