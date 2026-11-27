@@ -2446,3 +2446,83 @@ summary:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Career snapshot (TryHired U.S. career data) */
+.career-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(7, 29, 44, 0.52);
+  border: 1px solid rgba(118, 210, 229, 0.14);
+  border-radius: 12px;
+}
+
+.career-panel summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #b8eaf1;
+  font-size: 10.5px;
+  font-weight: 720;
+}
+
+.career-panel summary small {
+  margin-left: auto;
+  color: #82a9b7;
+  font-weight: 500;
+}
+
+.career-panel[open] summary {
+  margin-bottom: 8px;
+}
+
+.career-panel p {
+  margin: 9px 2px 0;
+  color: #82a9b7;
+  font-size: 8.5px;
+  line-height: 1.45;
+}
+
+.career-card {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(10, 41, 58, 0.7);
+  border: 1px solid rgba(116, 217, 236, 0.2);
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+.career-card strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.career-card dl {
+  margin: 8px 0;
+  display: grid;
+  gap: 5px;
+}
+
+.career-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.career-card dt {
+  color: #82a9b7;
+}
+
+.career-card dd {
+  margin: 0;
+  color: var(--ink);
+  text-align: right;
+}
+
+.career-card a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--sage-600);
+  font-size: 8.5px;
+}

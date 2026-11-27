@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   ArrowUpRight,
+  BriefcaseBusiness,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -56,6 +57,25 @@ import { OceanResumeVisual } from "./components/ocean-resume-visual";
 type ViewMode = "resume" | "latex";
 type JdMode = "paste" | "url";
 type Toast = { message: string; kind: "success" | "error" };
+type CareerSnapshot = {
+  name: string;
+  medianAnnualUsd: number | null;
+  payReferencePeriod: string | null;
+  typicalEducation: string | null;
+  outlookChangePct: number | null;
+  annualOpenings: number | null;
+  teleworkAbility: string | null;
+  noPriorExperience: string | null;
+  sourceUrl: string;
+  attribution: string;
+};
+type CareerResult = { query: string; match: CareerSnapshot | null };
+
+/** First short line of a pasted job description, used as a job-title guess. */
+function guessTitleFromJd(jd: string) {
+  const firstLine = jd.split("\n").map((line) => line.trim()).find(Boolean) ?? "";
+  return firstLine.length <= 80 ? firstLine : "";
+}
 
 const scoreLabels = [
   ["Job alignment", "alignment", 35],
@@ -88,6 +108,9 @@ export default function Home() {
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [isFetchingJd, setIsFetchingJd] = useState(false);
   const [isCurating, setIsCurating] = useState(false);
+  const [careerTitle, setCareerTitle] = useState("");
+  const [career, setCareer] = useState<CareerResult | null>(null);
+  const [isLookingUpCareer, setIsLookingUpCareer] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("resume");
   const [isEditing, setIsEditing] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>(() =>
@@ -201,11 +224,36 @@ export default function Home() {
       setJd(data.text);
       setJdMode("paste");
       setSuggestions(createLocalSuggestions(resume, data.text));
+      if (data.title) setCareerTitle(data.title);
       showToast(data.title ? `Imported “${data.title}”.` : "Job description imported.");
     } catch (error) {
       showToast(`${safeMessage(error)} You can paste the job description instead.`, "error");
     } finally {
       setIsFetchingJd(false);
+    }
+  };
+
+  const lookUpCareer = async () => {
+    const title = (careerTitle || guessTitleFromJd(jd)).trim();
+    if (title.length < 2) {
+      showToast("Type the job title to look up, e.g. “Software Engineer”.", "error");
+      return;
+    }
+    setIsLookingUpCareer(true);
+    try {
+      const response = await fetch("/api/career", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const data = (await response.json()) as CareerResult & { error?: string };
+      if (!response.ok) throw new Error(data.error || "Career data is unavailable right now.");
+      setCareer(data);
+      if (!careerTitle) setCareerTitle(title);
+    } catch (error) {
+      showToast(safeMessage(error), "error");
+    } finally {
+      setIsLookingUpCareer(false);
     }
   };
 
@@ -271,6 +319,8 @@ export default function Home() {
   const resetDemo = () => {
     setResume(DEMO_RESUME);
     setJd(DEMO_JD);
+    setCareerTitle("");
+    setCareer(null);
     setFileName("Maya_Rao_Master_CV.pdf");
     setSuggestions(createLocalSuggestions(DEMO_RESUME, DEMO_JD));
     setIsDemo(true);
@@ -443,6 +493,29 @@ export default function Home() {
               <p>Public HTTPS pages only. If a job board blocks access, paste the description instead.</p>
             </div>
           )}
+
+          <details className="career-panel">
+            <summary><BriefcaseBusiness size={14} /> Career snapshot <small>U.S. data</small></summary>
+            <div className="url-input">
+              <BriefcaseBusiness size={16} />
+              <input
+                aria-label="Job title for career snapshot"
+                value={careerTitle}
+                onChange={(event) => setCareerTitle(event.target.value)}
+                placeholder={guessTitleFromJd(jd) || "Job title, e.g. Software Engineer"}
+                maxLength={300}
+              />
+            </div>
+            <button className="secondary-button full" onClick={lookUpCareer} disabled={isLookingUpCareer}>
+              {isLookingUpCareer ? <LoaderCircle className="spin" size={16} /> : <ArrowUpRight size={16} />}
+              Look up pay, education &amp; outlook
+            </button>
+            {career && !career.match && (
+              <p>No career data found for “{career.query || careerTitle}”. Try a simpler title.</p>
+            )}
+            {career?.match && <CareerCard snapshot={career.match} />}
+            <p>Only the job title is sent to TryHired. Your resume and the job description stay here.</p>
+          </details>
 
           <button className="primary-button curate-button" onClick={curateResume} disabled={isCurating}>
             {isCurating ? <LoaderCircle className="spin" size={18} /> : <WandSparkles size={18} />}
@@ -634,6 +707,40 @@ export default function Home() {
         </div>
       )}
     </main>
+  );
+}
+
+function CareerCard({ snapshot }: { snapshot: CareerSnapshot }) {
+  const pay =
+    snapshot.medianAnnualUsd === null
+      ? null
+      : `$${snapshot.medianAnnualUsd.toLocaleString("en-US")} / year${snapshot.payReferencePeriod ? ` (${snapshot.payReferencePeriod})` : ""}`;
+  const growth =
+    snapshot.outlookChangePct === null
+      ? null
+      : `${snapshot.outlookChangePct > 0 ? "+" : ""}${snapshot.outlookChangePct}%${snapshot.annualOpenings ? ` · ~${snapshot.annualOpenings.toLocaleString("en-US")} openings/yr` : ""}`;
+  const rows: [string, string | null][] = [
+    ["Median pay", pay],
+    ["Typical education", snapshot.typicalEducation],
+    ["Job growth 2025–35", growth],
+    ["Can work remotely", snapshot.teleworkAbility],
+    ["Need no prior experience", snapshot.noPriorExperience],
+  ];
+  return (
+    <div className="career-card">
+      <strong>{snapshot.name}</strong>
+      <dl>
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value ?? "Not published"}</dd>
+          </div>
+        ))}
+      </dl>
+      <a href={snapshot.sourceUrl} target="_blank" rel="noopener noreferrer">
+        Source: {snapshot.attribution} <ArrowUpRight size={12} />
+      </a>
+    </div>
   );
 }
 

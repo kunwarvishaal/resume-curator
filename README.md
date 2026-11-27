@@ -10,6 +10,7 @@ Built for [Vercel](https://vercel.com) with Next.js 15, OpenAI, and client-side 
 - **Job description input** — paste text or import from a public HTTPS job URL
 - **95+ ATS target** — transparent, explainable scoring rubric (alignment, evidence, structure, completeness, language)
 - **AI fix suggestions** — grammar, vocabulary, impact, and keyword improvements via OpenAI (with local fallback)
+- **Career snapshot** — U.S. median pay, typical education, 10-year job growth and remote-work share for the target job title, from [TryHired](https://tryhired.co/data/#api)'s free API (BLS + O\*NET data, no key)
 - **LaTeX output** — ATS-safe, single-column source you can copy or download
 - **Export** — `.tex`, `.docx`, and selectable-text `.pdf`
 - **Oceanic UI** — glass morphism theme with animated SVG hero visual
@@ -57,7 +58,7 @@ and Dependabot opens weekly update PRs. Install with `npm ci` so the versions in
 ## Logs
 
 API routes write one JSON line per event (`curate.ai_ok`, `curate.ai_failed`, `jd_import.failed`,
-`login.failed`, `*.rate_limited` ...). In Vercel, open the project's **Logs** tab and filter by
+`career.lookup`, `career.unavailable`, `login.failed`, `*.rate_limited` ...). In Vercel, open the project's **Logs** tab and filter by
 `curate.ai_failed` to see when the OpenAI review falls back to local analysis, and why.
 Logs never include resume text, job descriptions, passwords or IP addresses.
 
@@ -103,12 +104,14 @@ app/
   api/
     curate/route.ts     # OpenAI fix suggestions
     jd/extract/route.ts # Job URL importer
+    career/route.ts     # Career snapshot (POST { title }) via TryHired
     login/route.ts       # Password check + session cookie
 lib/
   resume-engine.ts      # Parsing, ATS scoring, LaTeX builder
   client/file-tools.ts  # Upload parsing + exports
   server/api-security.ts
   server/auth.ts          # Password gate helpers
+  server/career-data.ts   # TryHired lookup: title cleaning, match check, 24 h cache
 middleware.ts            # Redirects unauthenticated requests to /login
 public/
   hero-wave.svg         # Decorative landing SVG
@@ -117,7 +120,7 @@ public/
 
 ## Privacy
 
-Uploaded CV bytes are parsed in the browser and are **not stored** by this version. OpenAI requests send only structured resume text and the job description to your configured API key on the server.
+Uploaded CV bytes are parsed in the browser and are **not stored** by this version. OpenAI requests send only structured resume text and the job description to your configured API key on the server. The career snapshot sends only a cleaned job title (e.g. "software engineer") to TryHired, and only when you press its button.
 
 ## License
 
