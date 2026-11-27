@@ -2,7 +2,7 @@
 
 Every item from `~/.claude/engineering-checklist.md`, accounted for.
 Status: **Done** · **Partial** · **To do** · **N/A** (doesn't apply yet, with the reason).
-Last reviewed: 28 Nov 2026 (moved to Next.js 16: ESLint CLI with flat config, `middleware.ts` renamed `proxy.ts`).
+Last reviewed: 28 Nov 2026 (moved to Next.js 16; added the AI-writing check).
 
 What the app is: a Next.js app on Vercel. CVs are parsed **in the browser**; the server
 has four API routes (`/api/curate`, `/api/jd/extract`, `/api/career`, `/api/login`) plus `/api/health`,
@@ -134,6 +134,7 @@ no database, and one secret (`OPENAI_API_KEY`) used only on the server.
 | --- | --- | --- |
 | Accessibility | Partial | `jsx-a11y` lint rules pass; no screen-reader or contrast audit yet. |
 | Mobile responsiveness | To do | Not yet checked at phone width. |
+| Writing quality (AI-sounding text) | Done | `lib/ai-tells.ts` flags words, phrases and spaced em dashes from Wikipedia's "Signs of AI writing" (checked 28 Nov 2026). Each one costs 0.5 language points (max 1.5), a note appears under the keywords panel, and the AI-review prompt is told to avoid them. Flags only, never rewrites (`tests/ai-tells.test.ts`, 8 tests). |
 | Data privacy | Partial | CVs parsed locally, OpenAI called with `store:false`, logs exclude content. Career lookup sends only a cleaned job title to TryHired (never the CV or JD), says so in the panel, and logs only matched yes/no. To do: a short privacy note for the whole app. |
 
 ## Tool: Charted Waters CV formatter (`tools/cv-format/`)
