@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthedRequest } from "./lib/server/auth";
+import { accessMode, isAuthedRequest } from "./lib/server/auth";
+
+const LOCKED_MESSAGE =
+  "Resume Curator is locked: set APP_PASSWORD (or ALLOW_OPEN_ACCESS=true) in the deployment's environment variables.";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isPublic =
-    pathname === "/login" ||
-    pathname === "/api/login" ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/fonts");
+  const isAsset =
+    pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.startsWith("/fonts");
+  if (isAsset || pathname === "/api/health") return NextResponse.next();
 
+  if (accessMode() === "locked") {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: LOCKED_MESSAGE }, { status: 503 });
+    }
+    return new NextResponse(LOCKED_MESSAGE, {
+      status: 503,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const isPublic = pathname === "/login" || pathname === "/api/login";
   if (isPublic) return NextResponse.next();
 
   if (!(await isAuthedRequest(request))) {

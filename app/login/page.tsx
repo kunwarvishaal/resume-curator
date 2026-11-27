@@ -2,6 +2,7 @@
 
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { safeNextPath } from "../../lib/safe-redirect";
 
 export default function LoginPage() {
   return (
@@ -30,7 +31,7 @@ function LoginForm() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Login failed.");
-      const next = searchParams.get("next") || "/";
+      const next = safeNextPath(searchParams.get("next"));
       router.push(next);
       router.refresh();
     } catch (err) {

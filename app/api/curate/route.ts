@@ -11,7 +11,11 @@ import {
   readJsonBody,
   takeRateLimit,
 } from "../../../lib/server/api-security";
+import { describeError, log } from "../../../lib/server/log";
+import { fetchWithRetry } from "../../../lib/server/retry";
 
+const AI_DEADLINE_MS = 25_000;
+const AI_MAX_ATTEMPTS = 3;
 const MAX_REQUEST_BYTES = 180_000;
 const MAX_SUGGESTIONS = 8;
 const RATE_LIMIT = 10;
@@ -303,11 +307,17 @@ function extractOutputText(payload: unknown): string | null {
   return null;
 }
 
-async function getAiSuggestions(resume: ResumeDocument, jd: string, apiKey: string) {
+type AiResult =
+  | { ok: true; suggestions: Suggestion[]; proposed: number; attempts: number }
+  | { ok: false; reason: string; status?: number; attempts: number; detail?: string };
+
+async function getAiSuggestions(resume: ResumeDocument, jd: string, apiKey: string): Promise<AiResult> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25_000);
+  // One deadline shared by every attempt, so retries never make a request slower than before.
+  const timeout = setTimeout(() => controller.abort(), AI_DEADLINE_MS);
+  let attempts = 1;
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await fetchWithRetry("https://api.openai.com/v1/responses", {
       method: "POST",
       signal: controller.signal,
       headers: {
@@ -343,15 +353,38 @@ async function getAiSuggestions(resume: ResumeDocument, jd: string, apiKey: stri
         ],
         text: { format: responseFormat },
       }),
+    }, {
+      maxAttempts: AI_MAX_ATTEMPTS,
+      baseDelayMs: 500,
+      maxDelayMs: 4_000,
+      onRetry: ({ attempt, delayMs, status, error }) => {
+        attempts = attempt + 1;
+        log("warn", "curate.ai_retry", {
+          attempt,
+          delayMs,
+          status,
+          error: error ? describeError(error) : undefined,
+        });
+      },
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
+      return { ok: false, reason: "http_error", status: response.status, attempts };
+    }
     const outputText = extractOutputText(await response.json());
-    if (!outputText) return null;
+    if (!outputText) return { ok: false, reason: "empty_output", attempts };
     const parsed = modelOutputSchema.safeParse(JSON.parse(outputText));
-    return parsed.success ? { suggestions: validateSuggestions(resume, parsed.data.suggestions) } : null;
-  } catch {
-    return null;
+    if (!parsed.success) return { ok: false, reason: "schema_mismatch", attempts };
+    return {
+      ok: true,
+      suggestions: validateSuggestions(resume, parsed.data.suggestions),
+      proposed: parsed.data.suggestions.length,
+      attempts,
+    };
+  } catch (error) {
+    if (controller.signal.aborted) return { ok: false, reason: "timeout", attempts };
+    return { ok: false, reason: "exception", attempts, detail: describeError(error) };
   } finally {
     clearTimeout(timeout);
   }
@@ -360,6 +393,7 @@ async function getAiSuggestions(resume: ResumeDocument, jd: string, apiKey: stri
 export async function POST(request: Request) {
   const rateLimit = takeRateLimit(request, "curate", RATE_LIMIT, RATE_WINDOW_MS);
   if (!rateLimit.allowed) {
+    log("warn", "curate.rate_limited");
     return json(
       { error: "Too many curation requests. Please wait a moment and try again." },
       429,
@@ -381,10 +415,27 @@ export async function POST(request: Request) {
   const { resume, jd } = parsed.data;
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (apiKey) {
+    const startedAt = Date.now();
     const aiReview = await getAiSuggestions(resume, jd, apiKey);
-    if (aiReview !== null) {
+    const durationMs = Date.now() - startedAt;
+    if (aiReview.ok) {
+      log("info", "curate.ai_ok", {
+        durationMs,
+        attempts: aiReview.attempts,
+        proposed: aiReview.proposed,
+        accepted: aiReview.suggestions.length,
+      });
       return json({ suggestions: aiReview.suggestions, provider: "openai" });
     }
+    // Error level on purpose: users still get local suggestions, so without this
+    // line a broken key or an OpenAI outage would go completely unnoticed.
+    log("error", "curate.ai_failed", {
+      durationMs,
+      attempts: aiReview.attempts,
+      reason: aiReview.reason,
+      status: aiReview.status,
+      detail: aiReview.detail,
+    });
   }
 
   return json({
