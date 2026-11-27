@@ -1,6 +1,6 @@
 // Uses only the Web Crypto API (globalThis.crypto) rather than node:crypto so this
-// module works in both the Node.js runtime (API routes) and the Edge runtime
-// (middleware, which cannot import Node built-ins).
+// module works in the Node.js runtime (API routes and proxy.ts, the password gate)
+// and in the Edge runtime, so it never depends on where Next.js runs it.
 
 export const SESSION_COOKIE_NAME = "rc_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -89,7 +89,7 @@ function parseCookies(header: string | null): Record<string, string> {
     try {
       jar[key] = decodeURIComponent(value);
     } catch {
-      // A malformed cookie must not crash the middleware; skip it.
+      // A malformed cookie must not crash the proxy (password gate); skip it.
     }
   }
   return jar;

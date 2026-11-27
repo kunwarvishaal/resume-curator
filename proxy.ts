@@ -4,7 +4,7 @@ import { accessMode, isAuthedRequest } from "./lib/server/auth";
 const LOCKED_MESSAGE =
   "Resume Curator is locked: set APP_PASSWORD (or ALLOW_OPEN_ACCESS=true) in the deployment's environment variables.";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAsset =

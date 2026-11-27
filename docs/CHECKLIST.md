@@ -2,7 +2,7 @@
 
 Every item from `~/.claude/engineering-checklist.md`, accounted for.
 Status: **Done** · **Partial** · **To do** · **N/A** (doesn't apply yet, with the reason).
-Last reviewed: 27 Nov 2026 (added the career snapshot, `/api/career`, from TryHired's free API).
+Last reviewed: 28 Nov 2026 (moved to Next.js 16: ESLint CLI with flat config, `middleware.ts` renamed `proxy.ts`).
 
 What the app is: a Next.js app on Vercel. CVs are parsed **in the browser**; the server
 has four API routes (`/api/curate`, `/api/jd/extract`, `/api/career`, `/api/login`) plus `/api/health`,
@@ -19,9 +19,9 @@ no database, and one secret (`OPENAI_API_KEY`) used only on the server.
 | Caching | Partial | Pages prerendered and served from Vercel's CDN; API responses are `no-store` on purpose (personal data). Career lookups cached in memory for 24 h, max 200 titles (`lib/server/career-data.ts`); per instance, not shared. |
 | CDNs | Done | Vercel edge network serves static assets. |
 | Reverse proxies | Done | Vercel terminates TLS and proxies to the functions. |
-| API gateways | N/A | Four internal routes; middleware does auth for all of them. |
+| API gateways | N/A | Internal routes only; `proxy.ts` (Next.js 16's name for middleware) does auth for all of them. |
 | Docker | N/A | Vercel builds from source; no container needed. |
-| CI/CD | Done | `.github/workflows/ci.yml` (lint, typecheck, test, build, audit) + Vercel auto-deploy. Starts once pushed. |
+| CI/CD | Done | `.github/workflows/ci.yml` (lint via the ESLint CLI and `eslint.config.mjs`, typecheck, test, build, audit) + Vercel auto-deploy. Runs on every push to `main` and every PR. |
 | Message queues | N/A | No slow background work. |
 | HTTPS / TLS | Done | Vercel TLS + HSTS + `upgrade-insecure-requests` (`next.config.ts`). |
 | Horizontal vs vertical scaling | N/A | Serverless scales horizontally automatically. |
@@ -90,7 +90,7 @@ no database, and one secret (`OPENAI_API_KEY`) used only on the server.
 ## Auth
 | Item | Status | Where / notes |
 | --- | --- | --- |
-| Authentication | Done | Shared password gate (`middleware.ts`, `/api/login`). |
+| Authentication | Done | Shared password gate (`proxy.ts`, `/api/login`). |
 | Authorization | N/A | One role: everyone who logs in can do everything. |
 | Session management | Done | Signed `v1.<expiry>.<hmac>` cookie, 7 days (`lib/server/auth.ts`). |
 | Two-factor authentication / SSO / passkeys / magic links / password reset | N/A | Shared-password personal tool with no user accounts. Revisit if real accounts are added. |
@@ -116,7 +116,7 @@ no database, and one secret (`OPENAI_API_KEY`) used only on the server.
 | Path traversal | N/A | Server never reads files from user input. |
 | Command injection | N/A | No shell commands. |
 | File upload security | Done | Files are parsed in the browser (10 MB cap) and never uploaded to the server. |
-| Dependency vulnerabilities | Done | Lockfile, `npm run audit:prod` in CI, Dependabot weekly. postcss pinned until Next 16. `npm audit` on 28 Nov: 0 vulnerabilities (production and dev). |
+| Dependency vulnerabilities | Done | Lockfile, `npm run audit:prod` in CI, Dependabot weekly. On Next.js 16 since 28 Nov, so the old postcss pin is gone (Next's own postcss 8.5.23 audits clean). `npm audit` on 28 Nov: 0 vulnerabilities (production and dev). |
 | Principle of least privilege | Partial | CI token is read-only. To do: use a project-scoped OpenAI key limited to the Responses API. |
 | Content Security Policy | Partial | Strict except `script-src 'unsafe-inline'` (needed by Next without nonces). Career data is fetched server-side, so `connect-src 'self'` is unchanged. |
 | Security headers | Done | `next.config.ts`. |
