@@ -6,6 +6,37 @@ covers, see `docs/CHECKLIST.md`) and **how** it works.
 
 ---
 
+## Lesson 5 — Checking both kinds of packages for security bugs (28 Nov 2026)
+
+**Checklist:** Dependency vulnerabilities (web app and CV tool), CI/CD (CV tool)
+
+This project uses packages from two places, and each has its own checker:
+
+| Part | Package list | Checker |
+| --- | --- | --- |
+| Web app (Next.js) | `package.json` + `package-lock.json` (npm) | `npm audit` |
+| CV formatter (`tools/cv-format`) | `requirements.txt` (Python) | `pip-audit` |
+
+A **vulnerability** is a known, published bug in a package that someone could abuse, for
+example a crafted file that crashes the program reading it. Both checkers send only package
+names and versions (public information) to a public list of known bugs and report matches.
+
+**Results on 28 Nov:** `npm audit` found 0 (production and dev); `pip-audit -r requirements.txt`
+found none in python-docx, lxml, docx2pdf or the packages they pull in. Nothing needed upgrading.
+
+**Keeping it checked:** CI already ran `npm run audit:prod`. A new `cv-tool` job in
+`.github/workflows/ci.yml` now does the same for Python on every push:
+1. set up Python 3.12 (cached by `requirements.txt`, so reruns are quick);
+2. install the exact pinned versions plus pip-audit;
+3. run the 11 unit tests (`python -m unittest test_build_cv.py`);
+4. run `pip-audit -r requirements.txt`; a found vulnerability fails the job, so you see it.
+
+The PDF step is not tested in CI because it drives Microsoft Word, which Linux machines don't
+have; the tests cover the Word file. Run the same checks by hand:
+`~/.local/bin/pip-audit -r tools/cv-format/requirements.txt` and `npm audit --omit=dev`.
+
+---
+
 ## Lesson 4 — Career snapshot from a free public API (27 Nov 2026)
 
 **Files:** `lib/server/career-data.ts`, `app/api/career/route.ts`, `app/page.tsx` (`CareerCard`), `tests/career-data.test.ts`

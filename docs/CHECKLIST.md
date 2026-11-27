@@ -116,7 +116,7 @@ no database, and one secret (`OPENAI_API_KEY`) used only on the server.
 | Path traversal | N/A | Server never reads files from user input. |
 | Command injection | N/A | No shell commands. |
 | File upload security | Done | Files are parsed in the browser (10 MB cap) and never uploaded to the server. |
-| Dependency vulnerabilities | Done | Lockfile, `npm run audit:prod` in CI, Dependabot weekly. postcss pinned until Next 16. |
+| Dependency vulnerabilities | Done | Lockfile, `npm run audit:prod` in CI, Dependabot weekly. postcss pinned until Next 16. `npm audit` on 28 Nov: 0 vulnerabilities (production and dev). |
 | Principle of least privilege | Partial | CI token is read-only. To do: use a project-scoped OpenAI key limited to the Responses API. |
 | Content Security Policy | Partial | Strict except `script-src 'unsafe-inline'` (needed by Next without nonces). Career data is fetched server-side, so `connect-src 'self'` is unchanged. |
 | Security headers | Done | `next.config.ts`. |
@@ -152,8 +152,8 @@ JSON file and writes a Word CV plus a PDF (exported by Microsoft Word) to `~/Dow
 | Character encoding | Done | Files read as UTF-8; accents such as "Wärtsilä" print correctly. |
 | Logging / Structured logging | Partial | One `level event detail` line per step (`docx.saved`, `pdf.failed` ...); plain text, not JSON. Enough for a hand-run tool. |
 | Automated testing | Done | `tools/cv-format/test_build_cv.py`: 11 unit tests (validation, naming, layout, reruns). |
-| CI/CD | To do | The tests are not in `.github/workflows/ci.yml` yet; add a Python step. The PDF step needs Word, so CI can only test the Word file. |
-| Dependency vulnerabilities | Partial | Versions pinned in `requirements.txt`; no automatic audit (`pip-audit`) yet. |
+| CI/CD | Done | `cv-tool` job in `.github/workflows/ci.yml` (28 Nov): installs `requirements.txt` on Python 3.12, runs the 11 tests and pip-audit. The PDF step needs Word, so CI tests the Word file only. Starts once pushed. |
+| Dependency vulnerabilities | Done | Versions pinned in `requirements.txt`. `pip-audit -r requirements.txt` on 28 Nov: no known vulnerabilities (python-docx 1.2.0, lxml 6.1.3, docx2pdf 0.1.8 and what they pull in). Runs on every push in the `cv-tool` CI job. |
 | Secrets management | N/A | No keys or passwords. The Charted Waters email and phone in `build_cv.py` are public business details. |
 | Graceful shutdown | Done | Temp files are removed in `finally` blocks, even after an error or timeout. |
 | Circuit breakers / Exponential backoff | N/A | One local call to Word; a failure is reported once for you to fix, not retried. |
