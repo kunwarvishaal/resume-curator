@@ -123,6 +123,7 @@ export default function Home() {
 
   const score = useMemo(() => analyzeAts(resume, jd), [resume, jd]);
   const roundedScore = Math.round(score.overall);
+  const aiWritingNote = score.warnings.find((warning) => warning.includes("AI-written"));
   const latex = useMemo(() => buildLatex(resume), [resume]);
 
   useEffect(
@@ -671,6 +672,10 @@ export default function Home() {
               </details>
             )}
           </div>
+
+          {aiWritingNote && (
+            <p className="ai-writing-note" role="note"><AlertTriangle size={13} /> {aiWritingNote}</p>
+          )}
 
           <div className="suggestions-panel">
             <div className="suggestions-heading">

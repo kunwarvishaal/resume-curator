@@ -2526,3 +2526,15 @@ summary:focus-visible {
   color: var(--sage-600);
   font-size: 8.5px;
 }
+
+/* Shown when the resume wording reads as AI-written (lib/ai-tells.ts). */
+.ai-writing-note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--amber, #b7791f);
+}
+.ai-writing-note svg { flex: none; margin-top: 2px; }

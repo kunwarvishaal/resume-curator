@@ -6,6 +6,40 @@ covers, see `docs/CHECKLIST.md`) and **how** it works.
 
 ---
 
+## Lesson 7 — Spotting text that sounds machine-written (28 Nov 2026)
+
+**Checklist:** Writing quality (AI-sounding text). **Files:** `lib/ai-tells.ts`, `lib/resume-engine.ts`, `app/page.tsx`.
+
+Recruiters read hundreds of CVs. Words like "leveraged", "pivotal" and "seamless" now read as
+"written by a chatbot", even when the facts behind them are real. Wikipedia keeps a list of these
+*tells* (signs that give a writer away). We turned the parts a program can match into a check.
+
+**`findAiTells(text)`** returns every tell in the text, in order.
+1. A word list (delve, pivotal, leverage, robust...). `wordForms()` builds each word's variants:
+   a word ending in "e" drops it before adding endings, so "leverage" also matches "leveraging".
+2. Phrase patterns (*regular expressions*: small search patterns), for example
+   "played a pivotal role", "in order to", "not only ... but also".
+3. A spaced em dash ( — ). The short dash in "2021–2024" is not flagged.
+4. Sort everything by position so the list reads like the text.
+
+Left out on purpose: "landscape" and "dynamic", because a landscape architect or a
+dynamic-programming job is real CV content. A checker that cries wolf gets ignored.
+
+**`describeTells(tells)`** turns the list into a short phrase for the warning:
+`“leveraged”, “robust”, “seamless” and 2 more`.
+
+**Wiring:** `languageScore` subtracts 0.5 per tell (capped at 1.5, so one habit can't sink a good CV).
+`analyzeAts` adds a warning, the page shows it under the keywords panel, and the AI-review prompt
+now tells the model to avoid the same words. It only flags; it never rewrites your claims.
+
+**Example:** "Leveraged robust tooling that played a pivotal role" → 4 tells → −1.5 language
+points → note: *Some wording reads as AI-written (“leveraged”, “robust”, “played a pivotal role” and 1 more).*
+Better: "Cut build time 40% by caching dependencies."
+
+**Tests:** 8 tests, and 3 planted bugs (no em-dash check, no "-ing" forms, warning switched off) each made a test fail.
+
+---
+
 ## Lesson 6 — Moving to Next.js 16 (28 Nov 2026)
 
 **Checklist:** CI/CD, Dependency vulnerabilities, Authentication

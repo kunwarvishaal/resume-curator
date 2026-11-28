@@ -1,3 +1,5 @@
+import { describeTells, findAiTells } from "./ai-tells";
+
 export type ExperienceEntry = {
   id: string;
   company: string;
@@ -1166,6 +1168,8 @@ function languageScore(resume: ResumeDocument): number {
   if (/\b([a-z]+)\s+\1\b/i.test(combined)) score -= 1;
   if (/[ \t]{2,}/.test(combined)) score -= 0.5;
   if (fields.some((field) => tokens(field).length > 45)) score -= 1.5;
+  // Phrasing that reads as AI-written: half a point per tell, at most 1.5.
+  score -= Math.min(1.5, findAiTells(combined).length * 0.5);
   const bullets = resume.experience.flatMap((entry) => entry.bullets).filter(Boolean);
   if (bullets.length > 2) {
     const withPeriods = bullets.filter((bullet) => /[.!?]$/.test(bullet.trim())).length;
@@ -1206,6 +1210,14 @@ export function analyzeAts(resume: ResumeDocument, jd: string): AtsBreakdown {
   }
   if (missing.length) {
     warnings.push("Only add missing keywords that truthfully describe your experience.");
+  }
+  const tells = findAiTells(
+    [resume.headline, resume.summary, ...resume.experience.flatMap((entry) => entry.bullets)].join("\n"),
+  );
+  if (tells.length) {
+    warnings.push(
+      `Some wording reads as AI-written (${describeTells(tells)}). Plain verbs and specific facts read as yours.`,
+    );
   }
 
   return {
